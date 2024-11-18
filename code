@@ -16,9 +16,13 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.svm import SVR
 import xgboost as xgb
 from xgboost import XGBRegressor
+from pickletools import float8
+from scipy import stats
 import shap
 from sklearn.metrics import mean_squared_error, r2_score,accuracy_score
 import optuna
+from lime.lime_tabular import LimeTabularExplainer
+from sklearn.decomposition import PCA
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -43,9 +47,7 @@ complete_pipe = ColumnTransformer([('num', num_pipe, num_data), ('cat', cat_pipe
 #构建模型
 knn_model = KNeighborsRegressor(n_neighbors=4, p=1, weights='distance')
 random_model = RandomForestRegressor(bootstrap=False, max_depth=7, max_features='sqrt', min_samples_leaf=5, min_samples_split=7, n_estimators=90)
-bayes_model = BayesianRidge(alpha_1=0.0001, alpha_2=1e-06, fit_intercept=False, lambda_1=1e-06, lambda_2=0.0001)
 svr_model = SVR(C=3,kernel='linear', degree=1, gamma=0.1,coef0=0.0)
-lasso_model = Lasso(10)
 xgboost_model = XGBRegressor(booster='gbtree',n_estimators=180, learning_rate=0.01,  max_depth=4, min_child_weight=0.5, seed=40)
 
 #训练模型
@@ -60,20 +62,7 @@ r2_variance = np.var(cv_results['test_score'])
 y_pred = final_pipe.predict(X_test)
 print("R2 Score Variance:", r2_variance)
 
-#画热力图
-plt.rcParams['font.family'] = ['SimHei']  # 设置中文字体为黑体
-plt.rcParams['axes.unicode_minus'] = False  # 设置负号支持
-plt.rcParams['font.sans-serif'] = ['SimHei']#支持中文
-corr = X_train.corr(method='pearson')
-print(corr)
-correlation_matrix = X_train.corr()
-mask = np.tri(len(correlation_matrix), k=-1)
-np.fill_diagonal(mask, False)
-fig, ax = plt.subplots(1,1,figsize=(16,12))
-sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5, mask=mask)
-
 #网格搜索调参
-from pickletools import float8
 n_estimators_range = range(20, 200, 10)
 max_depth_range = range(1, 20,1)
 max_features_range = range(3, 10)
@@ -100,18 +89,7 @@ ax_test = sns.heatmap(arr_test_heatmap, cmap = "Blues", vmin=0.6, vmax=0.9)
 print("\nr2 heatmap:")
 plt.show()
 
-#绘制散点图
-plt.rcParams['font.sans-serif'] = ['SimHei']#支持中文
-preds = final_pipe.predict(X_test)
-plt.scatter(y_test, preds, c='b', marker='o',alpha=1, s=10)
-x = np.linspace(83,97)
-y = x 
-plt.plot(x,y, color='r',alpha=0.6)
-plt.xlabel('Actual Values',fontsize=12);plt.ylabel('Predicted Values',fontsize=12)
-plt.title('Scatter plot of Actual vs Predicted Values')
-
 #使用3q工具检测异常值，筛选数据
-from scipy import stats
 data=pd.read_excel('data/2090.xlsx')
 df=pd.DataFrame(data,columns=['Cr3C2'])
 u = df['Cr3C2'].mean()
@@ -126,6 +104,16 @@ print("Output normal data")
 print(data_c)
 print("Output exception data")
 print(error)
+
+#画热力图
+plt.rcParams['axes.unicode_minus'] = False
+corr = X_train.corr(method='pearson')
+print(corr)
+correlation_matrix = X_train.corr()
+mask = np.tri(len(correlation_matrix), k=-1)
+np.fill_diagonal(mask, False)
+fig, ax = plt.subplots(1,1,figsize=(16,12))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5, mask=mask)
 
 #绘制SHAP图
 data = pd.read_excel('data/2090.xlsx')
@@ -146,17 +134,48 @@ shap.force_plot(explainer.expected_value, shap_values[1],matplotlib = True,featu
 shap.summary_plot(shap_values,X_train,feature_names=X_train.columns,plot_type='violin')
 shap.summary_plot(shap_values,X_train,feature_names=X_train.columns)
 
+#绘制散点图
+preds = final_pipe.predict(X_test)
+plt.scatter(y_test, preds, c='b', marker='o',alpha=1, s=10)
+x = np.linspace(83,97)
+y = x 
+plt.plot(x,y, color='r',alpha=0.6)
+plt.xlabel('Actual Values',fontsize=12);plt.ylabel('Predicted Values',fontsize=12)
+plt.title('Scatter plot of Actual vs Predicted Values')
+
 #绘制LIME图
-LIMEdata = pd.read_excel('data/lime-he 预测.xlsx')
+X_train = np.array(X_train) 
+X_test = np.array(X_test)
+LIMEdata = pd.read_excel('data/LIME.xlsx')
+LIMEdata = LIMEdata.iloc[:,0:8]
 LIMEdata = LIMEdata.fillna(0)
-LIMEdata = imputer.transform(LIMEdata)
+scaler=StandardScaler()
+scaler.fit(LIMEdata,X_train)
 LIMEdata = scaler.transform(LIMEdata)
-columns = ['WC', 'Co', 'TiC', 'TaC/NbC', 'VC', 'Cr3C2', 'ZrC', 'grain size']
-LIMEdata = pd.DataFrame(LIMEdata, columns=columns)
-from lime.lime_tabular import LimeTabularExplainer
-feature_names = list(X_train.columns)
-explainer = LimeTabularExplainer(X_train.values, feature_names = feature_names, mode='regression')
+X_train = scaler.transform(X_train)
+imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
+LIMEdata = imputer.fit_transform(LIMEdata)
+X_train = imputer.fit_transform(X_train)
+columns = ['WC', 'Co', 'TiC', 'TaC/NbC', 'VC', 'Cr3C2', 'ZrC','grain size']
+LIMEdata = pd.DataFrame(LIMEdata,columns=columns)
+X_train = pd.DataFrame(X_train,columns=columns)
+explainer = LimeTabularExplainer(X_train.values, feature_names = columns, mode='regression')
 np.random.seed(42)
-predict_fn_rf=lambda x:rf.predict(x).astype(float)
-explaination = explainer.explain_instance(LIMEdata.iloc[7], predict_fn_rf, num_features=10)
+explaination = explainer.explain_instance(LIMEdata.iloc[0], random_model.predict, num_features=8)
 explaination.show_in_notebook(show_table = True, show_all = False)
+
+#PCA降维
+array = np.array(data)
+pca = PCA(n_components=2)
+pca.fit(data)
+var_ratio = pca.explained_variance_ratio_
+for idx, val in enumerate(var_ratio, 1):print("Principle component %d: %.2f%%" % (idx, val * 100))
+print("total: %.2f%%" % np.sum(var_ratio * 100))
+feature_importance = np.abs(pca.components_)
+feature_importance_sum = np.sum(feature_importance, axis=0)
+print("\n features importance（Contribution degree）:")
+ranking_df = pd.DataFrame({'特征': data.columns, 'Contribution degree': feature_importance_sum})
+ranking_df = ranking_df.sort_values(by='Contribution degree')
+print(ranking_df)
+df = pd.DataFrame(ranking_df)
+df.to_excel("Contribution degree.xlsx")
