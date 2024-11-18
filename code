@@ -1,0 +1,162 @@
+#导入所需资料包
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split,cross_validate,GridSearchCV, KFold
+from sklearn.dummy import DummyRegressor
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, LabelEncoder, OrdinalEncoder, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import make_pipeline
+from sklearn.linear_model import Lasso,BayesianRidge,Lasso,LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.svm import SVR
+import xgboost as xgb
+from xgboost import XGBRegressor
+import shap
+from sklearn.metrics import mean_squared_error, r2_score,accuracy_score
+import optuna
+import warnings
+warnings.filterwarnings("ignore")
+
+#导入数据
+data = pd.read_excel('data/2090.xlsx')
+
+#数据预处理
+data.duplicated().sum()
+data = data.drop_duplicates(subset=None, keep='first', inplace=False)
+data = data.dropna(subset= 'HRA')
+data.columns
+X = data.drop(columns=[ 'HRA','KIC (MPa. m1/2)', 'TRS'])
+y = data['HRA']
+X_train, X_test, y_train, y_test = train_test_split(X,y, train_size=0.8, random_state=50)
+X_train[['WC', 'Co', 'TiC', 'TaC/NbC', 'VC', 'Cr3C2', 'ZrC']] = X_train[['WC', 'Co', 'TiC', 'TaC/NbC', 'VC', 'Cr3C2', 'ZrC']].fillna(0)
+num_data = X_train.select_dtypes(include=float).columns.tolist()
+cat_data = X_train.select_dtypes(exclude=np.number).columns.tolist()
+num_pipe = make_pipeline(SimpleImputer(strategy='most_frequent'), StandardScaler())
+cat_pipe = make_pipeline(SimpleImputer(strategy='most_frequent'), OrdinalEncoder(handle_unknown = 'use_encoded_value', unknown_value = -2))
+complete_pipe = ColumnTransformer([('num', num_pipe, num_data), ('cat', cat_pipe, cat_data)])
+
+#构建模型
+knn_model = KNeighborsRegressor(n_neighbors=4, p=1, weights='distance')
+random_model = RandomForestRegressor(bootstrap=False, max_depth=7, max_features='sqrt', min_samples_leaf=5, min_samples_split=7, n_estimators=90)
+bayes_model = BayesianRidge(alpha_1=0.0001, alpha_2=1e-06, fit_intercept=False, lambda_1=1e-06, lambda_2=0.0001)
+svr_model = SVR(C=3,kernel='linear', degree=1, gamma=0.1,coef0=0.0)
+lasso_model = Lasso(10)
+xgboost_model = XGBRegressor(booster='gbtree',n_estimators=180, learning_rate=0.01,  max_depth=4, min_child_weight=0.5, seed=40)
+
+#训练模型
+final_pipe = make_pipeline(complete_pipe,random_model)
+final_pipe.fit(X_train, y_train)
+
+#使用r2评估模型
+cv_results = cross_validate(final_pipe, X_train, y_train, cv=10, scoring='r2', return_train_score=True)
+print("R2 Scores:", cv_results['test_score'])
+print("Average R2 Score:", np.mean(cv_results ['test_score']))
+r2_variance = np.var(cv_results['test_score'])
+y_pred = final_pipe.predict(X_test)
+print("R2 Score Variance:", r2_variance)
+
+#画热力图
+plt.rcParams['font.family'] = ['SimHei']  # 设置中文字体为黑体
+plt.rcParams['axes.unicode_minus'] = False  # 设置负号支持
+plt.rcParams['font.sans-serif'] = ['SimHei']#支持中文
+corr = X_train.corr(method='pearson')
+print(corr)
+correlation_matrix = X_train.corr()
+mask = np.tri(len(correlation_matrix), k=-1)
+np.fill_diagonal(mask, False)
+fig, ax = plt.subplots(1,1,figsize=(16,12))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5, mask=mask)
+
+#网格搜索调参
+from pickletools import float8
+n_estimators_range = range(20, 200, 10)
+max_depth_range = range(1, 20,1)
+max_features_range = range(3, 10)
+param_grid = {
+    'n_estimators': n_estimators_range,
+    'max_depth': max_depth_range,
+    'max_features' : max_features_range
+}
+rf = RandomForestRegressor()
+scoring = {'r2': 'r2'}
+grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=5, scoring=scoring, refit='r2',return_train_score=True)
+grid_search.fit(X_train, y_train)
+results_rf = pd.DataFrame(grid_search.cv_results_)
+results_rf = results_rf[['param_n_estimators', 'param_max_depth','param_max_features', 'mean_test_r2']]
+results_rf.columns = ['n_estimators', 'max_depth', 'max_features','r2_valid']
+results_rf.loc[:, 'n_estimators'] = results_rf['n_estimators'].astype(int)
+results_rf.loc[:, 'max_depth'] = results_rf['max_depth'].astype(int)
+results_rf.loc[:, 'max_features'] = results_rf['max_depth'].astype(int)
+print(results_rf)
+sns.set(font_scale = 1)
+arr_test_heatmap = results_rf.pivot(index="n_estimators", columns="max_depth", values="r2_valid")
+#ax_test = sns.heatmap(arr_test_heatmap, data=results_rf[['r2_valid']], cmap = "Blues", vmin=0.4, vmax=0.9)
+ax_test = sns.heatmap(arr_test_heatmap, cmap = "Blues", vmin=0.6, vmax=0.9)
+print("\nr2 heatmap:")
+plt.show()
+
+#绘制散点图
+plt.rcParams['font.sans-serif'] = ['SimHei']#支持中文
+preds = final_pipe.predict(X_test)
+plt.scatter(y_test, preds, c='b', marker='o',alpha=1, s=10)
+x = np.linspace(83,97)
+y = x 
+plt.plot(x,y, color='r',alpha=0.6)
+plt.xlabel('Actual Values',fontsize=12);plt.ylabel('Predicted Values',fontsize=12)
+plt.title('Scatter plot of Actual vs Predicted Values')
+
+#使用3q工具检测异常值，筛选数据
+from scipy import stats
+data=pd.read_excel('data/2090.xlsx')
+df=pd.DataFrame(data,columns=['Cr3C2'])
+u = df['Cr3C2'].mean()
+std = df['Cr3C2'].std()
+p=stats.kstest(df,'norm',(u,std))
+print(stats.kstest(df,'norm',(u,std)))
+print('The average is:%.3f，The standard deviation is:：%.3f'%(u,std))
+print('-------')
+error = df[np.abs(df['Cr3C2']-u)>3*std]
+data_c = df[np.abs(df['Cr3C2']-u)<= 3*std]
+print("Output normal data")
+print(data_c)
+print("Output exception data")
+print(error)
+
+#绘制SHAP图
+data = pd.read_excel('data/2090.xlsx')
+data = data.dropna(subset='HRA') 
+data = data.dropna(subset='grain size')
+X = data.drop(columns=['HRA','KIC (MPa. m1/2)','TRS'])
+y = data['HRA']
+X[['WC', 'Co', 'TiC', 'TaC/NbC', 'VC', 'Cr3C2', 'ZrC']] = X[['WC', 'Co', 'TiC', 'TaC/NbC', 'VC', 'Cr3C2', 'ZrC']].fillna(0)
+X_train, X_test, y_train, y_test = train_test_split(X,y, train_size=0.8, random_state=30)
+rf_model = RandomForestRegressor(bootstrap=False, max_depth=7, max_features='sqrt', min_samples_leaf=5, min_samples_split=5, n_estimators=60)
+rf_model.fit(X_train, y_train)
+y_pred = rf_model.predict(X_test)
+mse = mean_squared_error(y_test, y_pred)**(0.5)
+explainer = shap.TreeExplainer(rf_model)
+print (explainer.expected_value)
+shap_values = explainer.shap_values(X_train)
+shap.force_plot(explainer.expected_value, shap_values[1],matplotlib = True,feature_names=X_train.columns)
+shap.summary_plot(shap_values,X_train,feature_names=X_train.columns,plot_type='violin')
+shap.summary_plot(shap_values,X_train,feature_names=X_train.columns)
+
+#绘制LIME图
+LIMEdata = pd.read_excel('data/lime-he 预测.xlsx')
+LIMEdata = LIMEdata.fillna(0)
+LIMEdata = imputer.transform(LIMEdata)
+LIMEdata = scaler.transform(LIMEdata)
+columns = ['WC', 'Co', 'TiC', 'TaC/NbC', 'VC', 'Cr3C2', 'ZrC', 'grain size']
+LIMEdata = pd.DataFrame(LIMEdata, columns=columns)
+from lime.lime_tabular import LimeTabularExplainer
+feature_names = list(X_train.columns)
+explainer = LimeTabularExplainer(X_train.values, feature_names = feature_names, mode='regression')
+np.random.seed(42)
+predict_fn_rf=lambda x:rf.predict(x).astype(float)
+explaination = explainer.explain_instance(LIMEdata.iloc[7], predict_fn_rf, num_features=10)
+explaination.show_in_notebook(show_table = True, show_all = False)
