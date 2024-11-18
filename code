@@ -1,4 +1,4 @@
-#导入所需资料包
+#Import dependency package
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split,cross_validate,GridSearchCV, KFold
@@ -28,10 +28,10 @@ from sklearn.decomposition import PCA
 import warnings
 warnings.filterwarnings("ignore")
 
-#导入数据
+#Import data
 data = pd.read_excel('data/2090.xlsx')
 
-#数据预处理
+#Data preprocessing
 data.duplicated().sum()
 data = data.drop_duplicates(subset=None, keep='first', inplace=False)
 data = data.dropna(subset= 'HRA')
