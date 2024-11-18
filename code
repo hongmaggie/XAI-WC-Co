@@ -209,8 +209,3 @@ data_test = pd.read_excel("output.xlsx")
 test = final_pipe.predict(data_test)
 data_test["HRA"] = pd.DataFrame({'HRA': test})
 data_test.to_excel('output_HRA.xlsx', index=False)
-#预测性能
-data_test = pd.read_excel("output.xlsx")
-test = final_pipe.predict(data_test)
-data_test["HRA"] = pd.DataFrame({'HRA': test})
-data_test.to_excel('output_HRA.xlsx', index=False)
