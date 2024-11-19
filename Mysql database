@@ -1,0 +1,75 @@
+#Download the mysql database and dbeaver, and connect dbeaver to mysql
+#Import and export data through dbeaver
+
+#Build database
+create database WC_Co;
+use WC_Co;
+create table alloyes(
+  id int(255) not null unique,
+  WC varchar(255),
+  Co varchar(255),
+  C varchar(255),
+  VC varchar(255),
+  Cr3C2 varchar(255),
+  (Ta+Nb)C varchar(255),
+  TiC varchar(255),
+  Cr varchar(255),
+  Cn varchar(255),
+  Ni varchar(255),
+  Fe varchar(255),
+  Al varchar(255),
+  W varchar(255),
+ （W,Cr）C varchar(255),
+ （W,V）C varchar(255),
+  Y2O3 varchar(255),
+  ZrO2 varchar(255),
+  SiC varchar(255),
+  Mo varchar(255),
+  Mo2C varchar(255),
+  ZrC varchar(255),
+  CeO2 varchar(255),
+  Rare earth varchar(255),
+  TRS(MPa) varchar(255),
+  HRA varchar(255),
+  HV varchar(255),
+  KIC varchar(255),
+  Ms varchar(255),
+  Density	 varchar(255),
+  Theoretical density	 varchar(255),
+  Grainsize（μm）varchar(255),
+  Sintering T	 varchar(255),
+  Sintering method  varchar(255),
+  Sintering pressure  varchar(255),
+  average intercept grain size  varchar(255),
+  wear rate  varchar(255),
+  Milling time  varchar(255),
+  Ball mill medium  varchar(255),
+  Ball mill medium  varchar(255),
+  WC powder grain size  varchar(255),
+  Grinding medium  varchar(255),
+  Solid-liquid ratio  varchar(255),
+  Ratio of ball to material  varchar(255),
+  Loose density  varchar(255),
+  Pressing pressure  varchar(255),
+  Pressing time  varchar(255),
+  Coefficient of linear shrinkage  varchar(255),
+  Cobalt magnet  varchar(255),
+);
+ALTER TABLE WC_Co.alloyes MODIFY COLUMN id int auto_increment NOT NULL;
+
+#Randomly generated data
+use WC_Co;
+create table test(
+ id int(255) not null unique
+);
+CREATE TABLE WC_Co.NewTable (
+)
+ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_0900_ai_ci;
+
+SELECT * FROM newtable
+WHERE RAND() > 1/10
+limit 5000;
+use WC_Co;
+SELECT* FROM output ORDER BY RAND() LIMIT 1000;
