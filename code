@@ -56,7 +56,7 @@ xgboost_model = XGBRegressor(booster='gbtree',n_estimators=180, learning_rate=0.
 final_pipe = make_pipeline(complete_pipe,random_model)
 final_pipe.fit(X_train, y_train)
 
-#使用r2评估模型
+#The model was evaluated using r2
 cv_results = cross_validate(final_pipe, X_train, y_train, cv=10, scoring='r2', return_train_score=True)
 print("R2 Scores:", cv_results['test_score'])
 print("Average R2 Score:", np.mean(cv_results ['test_score']))
@@ -64,7 +64,7 @@ r2_variance = np.var(cv_results['test_score'])
 y_pred = final_pipe.predict(X_test)
 print("R2 Score Variance:", r2_variance)
 
-#网格搜索调参
+#Grid search tuning
 n_estimators_range = range(20, 200, 10)
 max_depth_range = range(1, 20,1)
 max_features_range = range(3, 10)
