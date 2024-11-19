@@ -136,7 +136,7 @@ shap.force_plot(explainer.expected_value, shap_values[1],matplotlib = True,featu
 shap.summary_plot(shap_values,X_train,feature_names=X_train.columns,plot_type='violin')
 shap.summary_plot(shap_values,X_train,feature_names=X_train.columns)
 
-#绘制散点图
+#Plot scatter plots
 preds = final_pipe.predict(X_test)
 plt.scatter(y_test, preds, c='b', marker='o',alpha=1, s=10)
 x = np.linspace(83,97)
@@ -145,7 +145,7 @@ plt.plot(x,y, color='r',alpha=0.6)
 plt.xlabel('Actual Values',fontsize=12);plt.ylabel('Predicted Values',fontsize=12)
 plt.title('Scatter plot of Actual vs Predicted Values')
 
-#绘制LIME图
+#Mapping LIME
 X_train = np.array(X_train) 
 X_test = np.array(X_test)
 LIMEdata = pd.read_excel('data/LIME.xlsx')
@@ -166,7 +166,7 @@ np.random.seed(42)
 explaination = explainer.explain_instance(LIMEdata.iloc[0], random_model.predict, num_features=8)
 explaination.show_in_notebook(show_table = True, show_all = False)
 
-#PCA降维
+#PCA dimension reduction
 array = np.array(data)
 pca = PCA(n_components=2)
 pca.fit(data)
@@ -182,7 +182,7 @@ print(ranking_df)
 df = pd.DataFrame(ranking_df)
 df.to_excel("Contribution degree.xlsx")
 
-#利用排列组合生成特征数据
+#Use permutation and combination to generate feature data
 num = np.arange(60,97,3) 
 num1 = np.arange(3,30,2)
 num2 = np.arange(0,15,1)
@@ -204,7 +204,7 @@ result = [(a,b,c,d,e,f,g,h) for a,b,c,d,e,f,g,h in result if ( a+b+c+d+e+f+g == 
 df = pd.DataFrame(result,columns=['WC', 'Co', 'TiC', 'TaC/NbC', 'VC', 'Cr3C2', 'ZrC', 'grain size'])
 df.to_excel('output.xlsx', index=False)
 
-#预测性能
+#Predictive performance
 data_test = pd.read_excel("output.xlsx")
 test = final_pipe.predict(data_test)
 data_test["HRA"] = pd.DataFrame({'HRA': test})
