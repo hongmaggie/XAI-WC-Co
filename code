@@ -46,13 +46,13 @@ num_pipe = make_pipeline(SimpleImputer(strategy='most_frequent'), StandardScaler
 cat_pipe = make_pipeline(SimpleImputer(strategy='most_frequent'), OrdinalEncoder(handle_unknown = 'use_encoded_value', unknown_value = -2))
 complete_pipe = ColumnTransformer([('num', num_pipe, num_data), ('cat', cat_pipe, cat_data)])
 
-#构建模型
+#Build model
 knn_model = KNeighborsRegressor(n_neighbors=4, p=1, weights='distance')
 random_model = RandomForestRegressor(bootstrap=False, max_depth=7, max_features='sqrt', min_samples_leaf=5, min_samples_split=7, n_estimators=90)
 svr_model = SVR(C=3,kernel='linear', degree=1, gamma=0.1,coef0=0.0)
 xgboost_model = XGBRegressor(booster='gbtree',n_estimators=180, learning_rate=0.01,  max_depth=4, min_child_weight=0.5, seed=40)
 
-#训练模型
+#Training model
 final_pipe = make_pipeline(complete_pipe,random_model)
 final_pipe.fit(X_train, y_train)
 
