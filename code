@@ -91,7 +91,7 @@ ax_test = sns.heatmap(arr_test_heatmap, cmap = "Blues", vmin=0.6, vmax=0.9)
 print("\nr2 heatmap:")
 plt.show()
 
-#使用3q工具检测异常值，筛选数据
+#Use the 3q tool to detect outliers and filter data
 data=pd.read_excel('data/2090.xlsx')
 df=pd.DataFrame(data,columns=['Cr3C2'])
 u = df['Cr3C2'].mean()
@@ -107,7 +107,7 @@ print(data_c)
 print("Output exception data")
 print(error)
 
-#画热力图
+#Drawing heat map
 plt.rcParams['axes.unicode_minus'] = False
 corr = X_train.corr(method='pearson')
 print(corr)
@@ -117,7 +117,7 @@ np.fill_diagonal(mask, False)
 fig, ax = plt.subplots(1,1,figsize=(16,12))
 sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5, mask=mask)
 
-#绘制SHAP图
+#Draw the SHAP diagram
 data = pd.read_excel('data/2090.xlsx')
 data = data.dropna(subset='HRA') 
 data = data.dropna(subset='grain size')
